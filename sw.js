@@ -1,40 +1,40 @@
+// sw.js — Firebase + Vanilla JS CYM Tracker
+
 const CACHE_NAME = 'cym-tracker-v1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './admin.html',
-  './app.js',
-  './admin-app.js',
-  './components/Layout.js',
-  './components/Alert.js',
-  './components/Loading.js',
-  './utils/db.js',
-  'https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js',
-  'https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js',
-  'https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js',
-  'https://cdn.tailwindcss.com',
-  'https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css'
+  './app.js',         // main JS
+  './db-firebase.js',  // Firestore helper
+  './style.css'        // optional, kung may CSS
 ];
 
+// Install Service Worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
   self.skipWaiting();
 });
 
+// Activate Service Worker and remove old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : null)
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+// Fetch event: cache first, fallback to network
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
+  );
+});      );
     })
   );
   self.clients.claim();
