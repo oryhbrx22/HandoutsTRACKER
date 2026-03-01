@@ -1,12 +1,12 @@
-<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CYM Leaders’ Tracker 2026 - Member Portal</title>
     <meta name="description" content="Track your daily devotions and meeting attendance.">
     <meta name="keywords" content="church, tracker, devotion, cym, leadership">
-    
+
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#10b981">
@@ -16,10 +16,13 @@
     <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
 
     <style type="text/tailwindcss">
-    @layer theme {
+        @layer theme {
         :root {
             --primary-color: #10b981; /* Emerald 500 */
             --primary-dark: #059669; /* Emerald 600 */
@@ -44,18 +47,26 @@
         }
     }
     </style>
+    <link rel="icon" href="https://app.trickle.so/storage/public/images/anonymous/a2147d9e-218b-4403-9490-ebdfdb6db817.jpeg">
+    <meta property="og:description" content="Track your daily devotions and meeting attendance.">
+    <meta property="og:image" content="https://app.trickle.so/storage/public/images/anonymous/1654932c-fadb-472d-bbb0-50974b3eeaa8.jpeg">
+    <meta name="twitter:description" content="Track your daily devotions and meeting attendance.">
+    <meta name="twitter:image" content="https://app.trickle.so/storage/public/images/anonymous/1654932c-fadb-472d-bbb0-50974b3eeaa8.jpeg">
 </head>
+
 <body class="bg-[var(--bg-page)] text-[var(--text-main)] font-sans antialiased">
     <div id="root"></div>
-    
+
     <!-- Utils -->
     <script type="text/babel" src="utils/db.js"></script>
-    
+    <script type="text/babel" src="utils/push.js"></script>
+    <script type="text/babel" src="utils/firebase.js"></script>
+
     <!-- Components -->
     <script type="text/babel" src="components/Layout.js"></script>
     <script type="text/babel" src="components/Alert.js"></script>
     <script type="text/babel" src="components/Loading.js"></script>
-    
+
     <!-- Main App -->
     <script type="text/babel" src="app.js"></script>
 
@@ -69,29 +80,7 @@
         }
     </script>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyCsQrzsGHZ7o7VY9EKIwSTnrBIi1x7fR_I",
-    authDomain: "cym-leaders-web-type-handouts.firebaseapp.com",
-    projectId: "cym-leaders-web-type-handouts",
-    storageBucket: "cym-leaders-web-type-handouts.firebasestorage.app",
-    messagingSenderId: "936994717986",
-    appId: "1:936994717986:web:c69063b30ec9d1a840e57b",
-    measurementId: "G-HW7HS1NEG1"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  window.db = getFirestore(app);
-  window.auth = getAuth(app);
-  window.analytics = getAnalytics(app);
-
-  console.log("🔥 Firebase Connected");
-</script>
 
 </body>
+
 </html>
