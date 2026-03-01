@@ -431,4 +431,269 @@ function AdminDashboard({ showAlert }) {
                                 className={`px-3 py-1 rounded-full text-sm font-medium capitalize transition-colors ${
                                     typeFilter === t 
                                     ? 'bg-gray-900 text-white' 
+                                    : 'bg-gray-100 text-gray-500 h                                            ? 'bg-green-100 text-green-700 border-green-200' 
+                                            : 'bg-gray-50 text-gray-400 border-gray-100'}
+                                    `}
+                                >
+                                    {day}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Meetings Section */}
+                    {objectData.submission_type === 'end' && (
+                        <div>
+                            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <div className="icon-users text-[var(--primary-color)]"></div>
+                                Meeting Attendance
+                            </h4>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left border rounded-lg overflow-hidden">
+                                    <thead className="bg-gray-50 text-gray-500">
+                                        <tr>
+                                            <th className="p-3 font-medium w-1/4">Meeting</th>
+                                            {[1,2,3,4,5].map(w => <th key={w} className="p-3 text-center w-10">W{w}</th>)}
+                                            <th className="p-3 text-left">List of Names / Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {Object.keys(meetingLabels).map(key => {
+                                            const records = meetings[key] || [0,0,0,0,0];
+                                            const note = notes[key] || '';
+                                            return (
+                                                <tr key={key}>
+                                                    <td className="p-3 font-medium text-gray-700 align-top">{meetingLabels[key]}</td>
+                                                    {records.map((r, i) => (
+                                                        <td key={i} className="p-3 text-center align-top">
+                                                            {r === 1 && <div className="w-6 h-6 rounded-full bg-green-500 mx-auto flex items-center justify-center" title="Present"><div className="icon-check text-white text-[10px]"></div></div>}
+                                                            {r === 2 && <div className="w-6 h-6 rounded-full bg-red-500 mx-auto flex items-center justify-center" title="Absent"><div className="icon-x text-white text-[10px]"></div></div>}
+                                                            {r === 0 && <span className="text-gray-300">-</span>}
+                                                        </td>
+                                                    ))}
+                                                    <td className="p-3 align-top">
+                                                        {note ? (
+                                                            <div className="text-gray-600 whitespace-pre-wrap">{note}</div>
+                                                        ) : (
+                                                            <span className="text-gray-300 italic">No notes</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {objectData.submission_type === 'mid' && (
+                        <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500 text-sm italic">
+                            Meeting attendance is only available in End-Month reports.
+                        </div>
+                    )}
+                </div>
+                
+                <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end">
+                    <button onClick={onClose} className="btn-secondary">Close</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function AdminDashboard({ showAlert }) {
+    const today = new Date();
+    const [month, setMonth] = React.useState(today.getMonth() + 1);
+    const [year, setYear] = React.useState(today.getFullYear());
+    const [typeFilter, setTypeFilter] = React.useState('all'); // all, mid, end
+    const [showArchived, setShowArchived] = React.useState(false); // Toggle for archived items
+    const [loading, setLoading] = React.useState(false);
+    const [data, setData] = React.useState([]);
+    const [stats, setStats] = React.useState({ total: 0, avgDevotion: 0, highestDevotion: 0 });
+    const [selectedItem, setSelectedItem] = React.useState(null);
+
+    React.useEffect(() => {
+        fetchData();
+    }, [month, year]);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const result = await DB.getSubmissionsByDate(month, year);
+            setData(result);
+            calculateStats(result);
+        } catch (error) {
+            console.error(error);
+            showAlert('Failed to fetch data', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const calculateStats = (items) => {
+        // Only calculate stats for active items usually, but let's include all loaded for now or just active
+        const activeItems = items.filter(i => i.objectData.status !== 'archived');
+        
+        if (activeItems.length === 0) {
+            setStats({ total: 0, avgDevotion: 0, highestDevotion: 0 });
+            return;
+        }
+
+        const totalDevotions = activeItems.reduce((acc, curr) => acc + (curr.objectData.devotion_count || 0), 0);
+        const maxDevotion = Math.max(...activeItems.map(i => i.objectData.devotion_count || 0));
+
+        setStats({
+            total: activeItems.length,
+            avgDevotion: Math.round(totalDevotions / activeItems.length),
+            highestDevotion: maxDevotion
+        });
+    };
+    
+    // Action Handlers
+    const handleArchive = async (id, currentStatus) => {
+        if (!confirm(`Are you sure you want to ${currentStatus === 'archived' ? 'restore' : 'archive'} this submission?`)) return;
+        
+        try {
+            if (currentStatus === 'archived') {
+                await DB.restoreSubmission(id);
+                showAlert('Submission restored successfully', 'success');
+            } else {
+                await DB.archiveSubmission(id);
+                showAlert('Submission archived successfully', 'info');
+            }
+            fetchData();
+        } catch (e) {
+            console.error(e);
+            showAlert('Action failed', 'error');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm('Are you sure you want to PERMANENTLY delete this submission? This cannot be undone.')) return;
+        
+        try {
+            await DB.deleteSubmission(id);
+            showAlert('Submission deleted permanently', 'success');
+            fetchData();
+        } catch (e) {
+            console.error(e);
+            showAlert('Delete failed', 'error');
+        }
+    };
+    
+    const filteredData = data.filter(item => {
+        const matchesType = typeFilter === 'all' ? true : item.objectData.submission_type === typeFilter;
+        const isArchived = item.objectData.status === 'archived';
+        
+        if (showArchived) {
+             return matchesType && isArchived;
+        } else {
+             return matchesType && !isArchived;
+        }
+    });
+    
+    // Helper to get meeting count
+    const getMeetingCount = (item, meetingKey) => {
+        if (item.objectData.submission_type !== 'end') return '-';
+        try {
+            const data = JSON.parse(item.objectData.data_json);
+            const meetings = data.meetings?.[meetingKey] || [];
+            return meetings.filter(r => r === 1).length;
+        } catch(e) { return '-'; }
+    };
+
+    // Helper to get notes for CSV
+    const getMeetingNotes = (item, meetingKey) => {
+        if (item.objectData.submission_type !== 'end') return '';
+        try {
+            const data = JSON.parse(item.objectData.data_json);
+            return (data.meeting_notes?.[meetingKey] || '').replace(/,/g, ';').replace(/\n/g, ' '); // Clean for CSV
+        } catch(e) { return ''; }
+    };
+
+    const exportCSV = () => {
+        const meetingKeys = ['w12_discipleship', 'cell_group', 'w12_meeting', 'sunday_services', 'cym_night', 'thursday_training', 'prayer_meeting'];
+        
+        // Build headers: Name, Type, Devotion, [Meeting Count, Meeting Note]..., Date
+        let headers = ['Name', 'Status', 'Type', 'Devotion Count'];
+        meetingKeys.forEach(k => {
+            headers.push(`${k} Count`);
+            headers.push(`${k} Notes`);
+        });
+        headers.push('Submitted At', 'Year', 'Month');
+        
+        const rows = filteredData.map(item => {
+            const basicInfo = [
+                item.objectData.member_name,
+                item.objectData.status || 'active',
+                item.objectData.submission_type,
+                item.objectData.devotion_count
+            ];
+            
+            const meetingData = [];
+            meetingKeys.forEach(k => {
+                meetingData.push(getMeetingCount(item, k));
+                meetingData.push(getMeetingNotes(item, k));
+            });
+            
+            const metaInfo = [
+                new Date(item.objectData.submitted_at).toLocaleDateString(),
+                item.objectData.year,
+                item.objectData.month
+            ];
+            
+            return [...basicInfo, ...meetingData, ...metaInfo];
+        });
+        
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + headers.join(",") + "\n" 
+            + rows.map(e => e.join(",")).join("\n");
+            
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `cym_report_${year}_${month}_${showArchived ? 'archived' : 'active'}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    return (
+        <Layout isAdmin title="Admin Dashboard">
+            {loading && <Loading fullScreen />}
+            {selectedItem && <DetailsModal submission={selectedItem} onClose={() => setSelectedItem(null)} />}
+            
+            {/* Filters */}
+            <div className="card mb-8 flex flex-col xl:flex-row gap-4 xl:items-center justify-between">
+                <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                         <select 
+                            value={month} 
+                            onChange={(e) => setMonth(parseInt(e.target.value))}
+                            className="input-field py-1"
+                        >
+                            {monthNames.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
+                        </select>
+                        <select 
+                            value={year} 
+                            onChange={(e) => setYear(parseInt(e.target.value))}
+                            className="input-field py-1"
+                        >
+                            {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                    
+                    <div className="h-8 w-px bg-gray-200 hidden sm:block"></div>
+                    
+                    <div className="flex gap-2">
+                        {['all', 'mid', 'end'].map(t => (
+                            <button
+                                key={t}
+                                onClick={() => setTypeFilter(t)}
+                                className={`px-3 py-1 rounded-full text-sm font-medium capitalize transition-colors ${
+                                    typeFilter === t 
+                                    ? 'bg-gray-900 text-white' 
                                     : 'bg-gray-100 text-gray-500 h
