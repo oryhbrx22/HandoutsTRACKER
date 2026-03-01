@@ -57,5 +57,34 @@
         ]
       }
     ]
+  },
+  {
+    "name": "cym_push_subscription",
+    "fields": [
+      {
+        "name": "member_name",
+        "type": "text",
+        "description": "Name of the member",
+        "options": null
+      },
+      {
+        "name": "endpoint",
+        "type": "text",
+        "description": "Push service endpoint URL",
+        "options": null
+      },
+      {
+        "name": "keys_json",
+        "type": "text",
+        "description": "JSON string containing p256dh and auth keys",
+        "options": null
+      },
+      {
+        "name": "user_agent",
+        "type": "text",
+        "description": "Browser/Device info",
+        "options": null
+      }
+    ]
   }
 ]
