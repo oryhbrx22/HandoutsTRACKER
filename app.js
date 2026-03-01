@@ -142,6 +142,7 @@ function TrackerDashboard({ user, showAlert }) {
     const [loading, setLoading] = React.useState(false);
     
     // State for tracking
+    const [pushEnabled, setPushEnabled] = React.useState(false);
     const [devotions, setDevotions] = React.useState({}); // { "1": true, "2": false ... }
     const [meetings, setMeetings] = React.useState({
         w12_discipleship: [0,0,0,0,0], // 0: none, 1: present, 2: absent
@@ -163,7 +164,44 @@ function TrackerDashboard({ user, showAlert }) {
     // Load data on month/year change
     React.useEffect(() => {
         loadData();
+        checkPushStatus();
     }, [month, year]);
+
+    const checkPushStatus = async () => {
+        const isSubscribed = await PushManager.checkSubscription();
+        setPushEnabled(isSubscribed);
+    };
+
+    const handleEnablePush = async () => {
+        // Ask user for the key since we can't hardcode it easily without backend envs in this static setup
+        // For a better UX, we would normally fetch this from an API, but here we might need to rely on 
+        // a configured constant or prompt. 
+        // For this demo, I will use a placeholder constant in push.js and assume the developer replaces it.
+        // Or I can ask the user to input it if it's missing.
+        
+        try {
+            // Replace this with your actual VAPID Public Key generated from the openssl command
+            const VAPID_PUBLIC_KEY = 'YOUR_VAPID_PUBLIC_KEY_STRING_HERE'; 
+            
+            // Basic validation to prevent crash if key is not set
+            if (VAPID_PUBLIC_KEY === 'YOUR_VAPID_PUBLIC_KEY_STRING_HERE' || VAPID_PUBLIC_KEY.length < 10) {
+                alert("Please configure the VAPID Public Key in the code (app.js handleEnablePush) to enable push notifications.");
+                return;
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                await PushManager.subscribeUser(user.name, VAPID_PUBLIC_KEY);
+                setPushEnabled(true);
+                showAlert('Push notifications enabled!', 'success');
+            } else {
+                showAlert('Permission denied for notifications', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            showAlert('Failed to enable push notifications', 'error');
+        }
+    };
 
     const loadData = async () => {
         setLoading(true);
@@ -294,72 +332,85 @@ function TrackerDashboard({ user, showAlert }) {
             {loading && <Loading fullScreen text="Syncing..." />}
             
             {/* Controls */}
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Hi, <span className="text-[var(--primary-color)]">{user.name}</span></h2>
-                    <p className="text-gray-500">Track your progress for {monthNames[month-1]} {year}</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Hi, <span className="text-[var(--primary-color)]">{user.name}</span></h2>
+                    <p className="text-sm sm:text-base text-gray-500">Track your progress for {monthNames[month-1]} {year}</p>
                 </div>
                 
-                <div className="flex items-center bg-white p-2 rounded-lg shadow-sm border border-gray-200">
-                    <select 
-                        value={month} 
-                        onChange={(e) => setMonth(parseInt(e.target.value))}
-                        className="bg-transparent font-medium text-gray-700 outline-none cursor-pointer px-2"
-                    >
-                        {monthNames.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
-                    </select>
-                    <div className="w-px h-4 bg-gray-300 mx-2"></div>
-                    <select 
-                        value={year} 
-                        onChange={(e) => setYear(parseInt(e.target.value))}
-                        className="bg-transparent font-medium text-gray-700 outline-none cursor-pointer px-2"
-                    >
-                        {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
+                <div className="w-full sm:w-auto flex items-center gap-2">
+                     {!pushEnabled && (
+                        <button 
+                            onClick={handleEnablePush}
+                            className="bg-blue-50 text-blue-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center gap-2"
+                            title="Enable Push Notifications"
+                        >
+                            <div className="icon-bell text-sm"></div>
+                            <span className="hidden sm:inline">Enable Notifications</span>
+                        </button>
+                    )}
+                    
+                    <div className="flex-1 sm:flex-none flex items-center bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                        <select 
+                            value={month} 
+                            onChange={(e) => setMonth(parseInt(e.target.value))}
+                            className="bg-transparent font-medium text-gray-700 outline-none cursor-pointer px-2 w-full sm:w-auto"
+                        >
+                            {monthNames.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
+                        </select>
+                        <div className="w-px h-4 bg-gray-300 mx-2 flex-shrink-0"></div>
+                        <select 
+                            value={year} 
+                            onChange={(e) => setYear(parseInt(e.target.value))}
+                            className="bg-transparent font-medium text-gray-700 outline-none cursor-pointer px-2"
+                        >
+                            {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
                 </div>
             </div>
 
             {/* Status Cards */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className={`p-4 rounded-xl border flex items-center justify-between ${status.mid ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <div className={`p-3 sm:p-4 rounded-xl border flex items-center justify-between ${status.mid ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Mid-Month</p>
-                        <p className={`font-bold ${status.mid ? 'text-green-700' : 'text-gray-400'}`}>
+                        <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Mid-Month</p>
+                        <p className={`font-bold text-sm sm:text-base ${status.mid ? 'text-green-700' : 'text-gray-400'}`}>
                             {status.mid ? 'Submitted' : 'Pending'}
                         </p>
                     </div>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${status.mid ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                        <div className={`icon-${status.mid ? 'check' : 'clock'} text-lg`}></div>
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${status.mid ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                        <div className={`icon-${status.mid ? 'check' : 'clock'} text-base sm:text-lg`}></div>
                     </div>
                 </div>
-                <div className={`p-4 rounded-xl border flex items-center justify-between ${status.end ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
+                <div className={`p-3 sm:p-4 rounded-xl border flex items-center justify-between ${status.end ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">End-Month</p>
-                        <p className={`font-bold ${status.end ? 'text-green-700' : 'text-gray-400'}`}>
+                        <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">End-Month</p>
+                        <p className={`font-bold text-sm sm:text-base ${status.end ? 'text-green-700' : 'text-gray-400'}`}>
                             {status.end ? 'Submitted' : 'Pending'}
                         </p>
                     </div>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${status.end ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                        <div className={`icon-${status.end ? 'check' : 'clock'} text-lg`}></div>
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${status.end ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                        <div className={`icon-${status.end ? 'check' : 'clock'} text-base sm:text-lg`}></div>
                     </div>
                 </div>
             </div>
 
             {/* Devotion Calendar */}
-            <div className="card mb-8">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-bold text-lg flex items-center gap-2">
+            <div className="card mb-6 sm:mb-8">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                    <h3 className="font-bold text-base sm:text-lg flex items-center gap-2">
                         <div className="icon-book-open text-[var(--primary-color)]"></div>
                         Devotion Tracker
                     </h3>
-                    <div className="text-sm font-medium bg-green-50 text-green-700 px-3 py-1 rounded-full">
+                    <div className="text-xs sm:text-sm font-medium bg-green-50 text-green-700 px-3 py-1 rounded-full whitespace-nowrap">
                         Total: {Object.values(devotions).filter(Boolean).length} Days
                     </div>
                 </div>
                 
-                <div className="grid grid-cols-7 gap-2 sm:gap-4">
+                <div className="grid grid-cols-7 gap-1 sm:gap-4">
                     {['S','M','T','W','T','F','S'].map((d,i) => (
-                        <div key={i} className="text-center text-xs font-bold text-gray-400 mb-2">{d}</div>
+                        <div key={i} className="text-center text-[10px] sm:text-xs font-bold text-gray-400 mb-1 sm:mb-2">{d}</div>
                     ))}
                     {daysArray.map(day => {
                         const isMidPeriod = day <= 15;
@@ -372,15 +423,15 @@ function TrackerDashboard({ user, showAlert }) {
                                 onClick={() => toggleDevotion(day)}
                                 disabled={isLocked}
                                 className={`
-                                    aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all
+                                    aspect-square rounded-md sm:rounded-lg flex flex-col items-center justify-center text-xs sm:text-sm font-medium transition-all
                                     ${isChecked 
-                                        ? 'bg-[var(--primary-color)] text-white shadow-md shadow-green-200' 
+                                        ? 'bg-[var(--primary-color)] text-white shadow-sm sm:shadow-md shadow-green-200' 
                                         : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}
                                     ${isLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer active:scale-95'}
                                 `}
                             >
                                 {day}
-                                {isChecked && <div className="icon-check text-xs mt-1"></div>}
+                                {isChecked && <div className="icon-check text-[10px] sm:text-xs mt-0.5 sm:mt-1"></div>}
                             </button>
                         );
                     })}
@@ -388,104 +439,7 @@ function TrackerDashboard({ user, showAlert }) {
                 
                 {/* Mid Month Submit Action */}
                 {!status.mid && (
-                    <div className="mt-6 pt-6 border-t border-gray-100 flex justify-end">
+                    <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100 flex justify-end">
                         <button 
                             onClick={() => handleSubmit('mid')}
-                            disabled={status.end} // Cannot submit mid if end is already done (rare case but safe)
-                            className="btn-primary"
-                        >
-                            Submit Mid-Month Report (Days 1-15)
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* Meeting Tracker (Visible but only submittable at end month) */}
-            <div className="card mb-8">
-                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-                    <h3 className="font-bold text-lg flex items-center gap-2">
-                        <div className="icon-users text-[var(--primary-color)]"></div>
-                        Meeting Attendance
-                    </h3>
-                    <div className="flex gap-4 text-xs">
-                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Present</div>
-                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Absent</div>
-                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-200"></span> N/A</div>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    {[
-                        { id: 'w12_discipleship', label: 'W12 Discipleship', desc: 'Who did you disciple?' },
-                        { id: 'cell_group', label: 'Cell Group', desc: 'List of attendees' },
-                        { id: 'w12_meeting', label: 'W12 Meeting', desc: 'Notes' },
-                        { id: 'sunday_services', label: 'Sunday Services', desc: 'Service time/notes' },
-                        { id: 'cym_night', label: 'CYM Night', desc: 'Notes' },
-                        { id: 'thursday_training', label: 'Thursday Training', desc: 'Notes' },
-                        { id: 'prayer_meeting', label: 'Prayer Meeting', desc: 'Notes' },
-                    ].map(m => (
-                        <div key={m.id} className="bg-gray-50/50 rounded-lg p-4 border border-gray-100">
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4 lg:mb-0">
-                                <div className="w-full lg:w-1/4">
-                                    <h4 className="font-semibold text-gray-800">{m.label}</h4>
-                                </div>
-                                
-                                <div className="flex gap-2 justify-start lg:justify-center flex-1">
-                                    {meetings[m.id].map((state, idx) => (
-                                        <div key={idx} className="flex flex-col items-center gap-1">
-                                            <span className="text-[10px] text-gray-400 font-bold">W{idx+1}</span>
-                                            <button
-                                                onClick={() => updateMeeting(m.id, idx)}
-                                                disabled={status.end}
-                                                className={`
-                                                    w-8 h-8 rounded-full flex items-center justify-center transition-all
-                                                    ${state === 0 ? 'bg-white border border-gray-200 text-gray-300 hover:border-gray-300' : ''}
-                                                    ${state === 1 ? 'bg-green-500 text-white shadow-sm shadow-green-200' : ''}
-                                                    ${state === 2 ? 'bg-red-500 text-white shadow-sm shadow-red-200' : ''}
-                                                    ${status.end ? 'cursor-not-allowed opacity-60' : ''}
-                                                `}
-                                            >
-                                                {state === 1 && <div className="icon-check text-sm"></div>}
-                                                {state === 2 && <div className="icon-x text-sm"></div>}
-                                                {state === 0 && <span className="text-xs">-</span>}
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            
-                            <div className="mt-3">
-                                <input 
-                                    type="text"
-                                    placeholder={`List of names / Remarks for ${m.label}...`}
-                                    value={meetingNotes[m.id] || ''}
-                                    onChange={(e) => updateMeetingNote(m.id, e.target.value)}
-                                    disabled={status.end}
-                                    className="w-full text-sm px-3 py-2 bg-white border border-gray-200 rounded-md focus:border-[var(--primary-color)] focus:ring-1 focus:ring-[var(--primary-color)] outline-none transition-colors"
-                                />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                 {!status.end && (
-                    <div className="mt-6 pt-6 border-t border-gray-100 flex justify-end">
-                        <button 
-                            onClick={() => handleSubmit('end')}
-                            className="btn-primary"
-                        >
-                            Submit End-Month Report (Full)
-                        </button>
-                    </div>
-                )}
-            </div>
-        </Layout>
-    );
-}
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>
-);
+                            disabled={status.end} // Cannot sub
