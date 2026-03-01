@@ -10,19 +10,19 @@ function Layout({ children, title, isAdmin = false }) {
     };
 
     return (
-        <div className="min-h-screen flex flex-col">
-            <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="min-h-screen flex flex-col bg-[var(--bg-page)]">
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white shadow-sm shadow-red-200">
+                        <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white shadow-sm shadow-red-200 flex-shrink-0">
                             <div className="icon-flame text-lg"></div>
                         </div>
-                        <h1 className="font-bold text-lg tracking-tight text-gray-900">
+                        <h1 className="font-bold text-base sm:text-lg tracking-tight text-gray-900 truncate">
                             CYM Tracker <span className="text-[var(--primary-color)] font-normal hidden sm:inline">| {isAdmin ? 'Admin Portal' : 'Member Portal'}</span>
                         </h1>
                     </div>
                     
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                          {!isAdmin && (
                             <a href="admin.html" className="text-sm text-gray-500 hover:text-[var(--primary-color)] transition-colors hidden md:block">
                                 Admin Login
@@ -57,4 +57,4 @@ function Layout({ children, title, isAdmin = false }) {
             </footer>
         </div>
     );
-}
+                             }
